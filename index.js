@@ -14,7 +14,10 @@ const server = http.createServer(app)
 const io = socketIo(server)
 
 // return by line 
+// ,parser: new SerialPort.parsers.Readline("\n")
 var serialport = new SerialPort(PORT,{baudRate:BAUDRATE,parser: new SerialPort.parsers.Readline("\n")})
+
+var buf = Buffer.alloc(0)
 
 serialport.on('open', function() {
   console.log("serialport open ",serialport.isOpen);
@@ -22,14 +25,33 @@ serialport.on('open', function() {
 
 
 serialport.on('data', function (data) {
-  //console.log("receive ",data);
-  var msg = data.toString('utf-8')
-  //console.log('msg',msg.length)
-  if ( msg.length>0 ) {
-    console.log('receive',data.toString('utf-8'));
-    io.emit('message', data.toString('utf-8'));
+  //console.log("data Buf",data);
+  //console.log('data str',data.toString('utf-8'));
  
+  buf = Buffer.concat([buf,data])
+  console.log('buf',buf)
+  if(buf.length>0)
+  {
+
+    var index = buf.lastIndexOf(0x0a)
+    //var index = buf.indexOf(0x0a)
+    var indexlast = buf.length
+
+    
+
+    console.log('index',index)
+    console.log('indexlast',indexlast)
+
+    var newbuf = buf.slice(0,index)
+    console.log('newbuf',newbuf)
+    io.emit('message', newbuf.toString('utf-8'));
+
+    buf= buf.slice(index,indexlast)
+
   }
+    //console.log('receive',data.toString('utf-8'));
+    //
+  
 });
 
 
@@ -46,7 +68,7 @@ io.on('connection', (socket) => {
 
 
   socket.on('message', msg => {
-    console.log('message',msg)
+    //console.log('message',msg)
     io.emit('message', msg);
     serialport.write(msg+'\n')
   });
